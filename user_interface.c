@@ -1,0 +1,338 @@
+/*
+  Shrey Varma
+  UID: 118019727
+  DirectoryID: shreyv
+
+  This program imitates a ext-based user interface to the
+  document manager system, which has methods defined in document.c
+*/
+
+#include <stdio.h>
+#include <sysexits.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include "document.h"
+
+char *clear_quote(char *command, char *result);
+int check_arg(Document *doc, char *command);
+
+/* adds paragraph to the document */
+int do_add_paragraph_after(Document *doc, char *arg) {
+   char name[MAX_STR_SIZE + 1], second[MAX_STR_SIZE + 1];
+   int arg_number, num;
+
+   arg_number = sscanf(arg, "%s%d%s", name, &num, second);
+   if (arg_number == 2 && num >= 0) {
+      if (add_paragraph_after(doc, num) == FAILURE) {
+         printf("add_paragraph_after failed\n");
+      }
+      return SUCCESS;
+   }
+   return FAILURE;
+}
+
+/* adds a line after specified line by line number */
+int do_add_line_after(Document *doc, char *arg) {
+   char name[MAX_STR_SIZE + 1], line[MAX_STR_SIZE + 1];
+   char buffer[MAX_STR_SIZE + 1];
+   int arg_number, first, second;
+
+   arg_number = sscanf(arg, "%s%d%d%s", name, &first, &second, buffer);
+   if (arg_number == 4 && first > 0 && second >= 0) {
+      if (strchr(arg, '*') != NULL) {
+         strcpy(line, strchr(arg, '*') + 1);
+         if (add_line_after(doc, first, second, line) == FAILURE) {
+            printf("add_line_after failed\n");
+         }
+         return SUCCESS;
+      }
+   }
+   return FAILURE;
+}
+
+/* prints important doc info) */
+int do_print_document(Document *doc, char *arg) {
+   char name[MAX_STR_SIZE + 1], buffer[MAX_STR_SIZE + 1];
+   int arg_number;
+
+   arg_number = sscanf(arg, "%s%s", name, buffer);
+   if (arg_number == 1) {
+      if (print_document(doc) == FAILURE) {
+         printf("print_document failed\n");
+      }
+      return SUCCESS;
+   }
+   return FAILURE;
+}
+
+/* appends line to paragraph number specified by user */
+int do_append_line(Document *doc, char *arg) {
+   char name[MAX_STR_SIZE + 1], line[MAX_STR_SIZE + 1];
+   char buffer[MAX_STR_SIZE + 1];
+   int arg_number, num;
+
+   arg_number = sscanf(arg, "%s%d%s", name, &num, buffer);
+   if (arg_number == 3 && num > 0) {
+
+      if (strchr(arg, '*') != NULL) {
+         strcpy(line, strchr(arg, '*') + 1);
+         if (append_line(doc, num, line) == FAILURE) {
+            printf("append_line failed\n");
+         }
+         return SUCCESS;
+      }
+   }
+   return FAILURE;
+}
+
+/* removes specific line from document */
+int do_remove_line(Document *doc, char *arg) {
+   char name[MAX_STR_SIZE + 1], buffer[MAX_STR_SIZE + 1];
+   int arg_number, first, second;
+
+   arg_number = sscanf(arg, "%s%d%d%s", name, &first, &second, buffer);
+   if (arg_number == 3 && first > 0 && second > 0) {
+      if (remove_line(doc, first, second) == FAILURE) {
+         printf("remove_line failed\n");
+      }
+      return SUCCESS;
+   }
+   return FAILURE;
+}
+
+/* loads data from document into file */
+int do_load_file(Document *doc, char *arg) {
+   char name[MAX_STR_SIZE + 1], file[MAX_STR_SIZE + 1];
+   char buffer[MAX_STR_SIZE + 1];
+   int arg_number;
+
+   arg_number = sscanf(arg, "%s%s%s", name, file, buffer);
+   if (arg_number == 2) {
+
+      if (load_file(doc, file) == FAILURE)
+      {
+         printf("load_file failed\n");
+      }
+      return SUCCESS;
+   }
+   return FAILURE;
+}
+
+/* replaces target string in document */
+int do_replace_text(Document *doc, char *arg)
+{
+   char name[MAX_STR_SIZE + 1], *first_string, *second_string, *third_string, *fourth_string;
+   char target[MAX_STR_SIZE + 1], replace[MAX_STR_SIZE + 1];
+   char first_buffer[MAX_STR_SIZE + 1], second_buffer[MAX_STR_SIZE + 1];
+   int arg_number;
+
+   arg_number = sscanf(arg, "%s%s%s", name, first_buffer, second_buffer);
+   first_string = strstr(arg, "\"");
+   if (arg_number == 3 && first_string != NULL) {
+      second_string = strstr(first_string + 1, "\"");
+      if (second_string != NULL) {
+         third_string = strstr(second_string + 1, "\"");
+         if (third_string != NULL) {
+            fourth_string = strstr(third_string + 1, "\"");
+            if (fourth_string != NULL) {
+               strncpy(target, first_string + 1, second_string - first_string);
+               target[second_string - (first_string + 1)] = '\0';
+               strncpy(replace, third_string + 1, fourth_string - third_string);
+               replace[fourth_string - (third_string + 1)] = '\0';
+               if (replace_text(doc, target, replace) == FAILURE) {
+                  printf("remove_line failed\n");
+               }
+               return SUCCESS;
+            }
+         }
+      }
+   } 
+   return FAILURE;
+}
+
+/* highlights target string */
+int do_highlight_text(Document *doc, char *arg) {
+   char name[MAX_STR_SIZE + 1], target[MAX_STR_SIZE + 1];
+   char temp[MAX_STR_SIZE + 1], *str, *result;
+   int arg_number;
+
+   arg_number = sscanf(arg, "%s%s", name, temp);
+   str = strstr(arg, "\"");
+
+   if (arg_number == 2 && str != NULL) {
+      if ((result = clear_quote(str, target)) != NULL) {
+         highlight_text(doc, result);
+         return SUCCESS;
+      }
+   }
+   return FAILURE;
+}
+
+/* removes string from target */
+int do_remove_text(Document *doc, char *command) {
+   char name[MAX_STR_SIZE + 1], target[MAX_STR_SIZE + 1];
+   char temp[MAX_STR_SIZE + 1], *str, *result;
+   int arg_number;
+
+   arg_number = sscanf(command, "%s%s", name, temp);
+   str = strstr(command, "\"");
+   if (arg_number == 2 && str != NULL) {
+      if ((result = clear_quote(str, target)) != NULL) {
+         remove_text(doc, result);
+         return SUCCESS;
+      }
+   }
+   return FAILURE;
+}
+
+/* saves data from document into file */
+int do_save_document(Document *doc, char *command) {
+   char name[MAX_STR_SIZE + 1], file[MAX_STR_SIZE + 1];
+   char buffer[MAX_STR_SIZE + 1];
+   int arg_number;
+
+   arg_number = sscanf(command, "%s%s%s", name, file, buffer);
+   if (arg_number == 2) {
+      if (save_document(doc, file) == FAILURE) {
+         printf("save_document failed\n");
+      }
+      return SUCCESS;
+   }
+   return FAILURE;
+}
+
+/* resets the document */
+int do_reset_document(Document *doc, char *command) {
+   char name[MAX_STR_SIZE + 1], buffer[MAX_STR_SIZE + 1];
+   int arg_number;
+
+   arg_number = sscanf(command, "%s%s", name, buffer);
+   if (arg_number == 1) {
+      reset_document(doc);
+      return SUCCESS;
+   }
+   return FAILURE;
+}
+
+/* removes pairs of quotes in string */
+char *clear_quote(char *command, char *result)
+{
+   char *first_string, *second_string;
+
+   first_string = strstr(command, "\"");
+   if (first_string != NULL) {
+      second_string = strstr(first_string + 1, "\"");
+      if (second_string != NULL) {
+         strncpy(result, first_string + 1, second_string - first_string);
+         result[second_string - (first_string + 1)] = '\0';
+         return result;
+      }
+   }
+   return NULL;
+}
+
+/* searched through input string to see if argument is valid */
+int check_arg(Document *doc, char *arg) {
+   int status = FAILURE;
+
+   if (strstr(arg, "add_paragraph_after") != NULL) {
+      if (!do_add_paragraph_after(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "add_line_after") != NULL) {
+      if (!do_add_line_after(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "print_document") != NULL) {
+      if (!do_print_document(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "append_line") != NULL) {
+      if (!do_append_line(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "remove_line") != NULL) {
+      if (!do_remove_line(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "load_file") != NULL) {
+      if (!do_load_file(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "replace_text") != NULL) {
+      if (!do_replace_text(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "highlight_text") != NULL) {
+      if (!do_highlight_text(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "remove_text") != NULL) {
+      if (!do_remove_text(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "save_document") != NULL) {
+      if (!do_save_document(doc, arg)) {
+         status = SUCCESS;
+      }
+   } else if (strstr(arg, "reset_document") != NULL) {
+      if (!do_reset_document(doc, arg)) {
+         status = SUCCESS;
+      }
+   }
+
+   if (status == FAILURE) {
+      printf("Invalid Command\n");
+   }
+   return status;
+}
+
+/* Main method */
+int main(int argc, char *argv[]) {
+   Document doc;
+   const char *doc_name = "main_document";
+   FILE *input_file;
+   char line[MAX_STR_SIZE + 1], line1, line2[MAX_STR_SIZE + 1];
+   int arg_number = 0;
+
+   if (init_document(&doc, doc_name) == FAILURE) {
+      printf("Initialization failed\n");
+   } else {
+      if (argc == 1) {
+         input_file = stdin;
+         printf("> ");
+         fgets(line, MAX_STR_SIZE + 1, stdin);
+         while (strcmp(line, "quit\n") && strcmp(line, "exit\n")) {
+            sscanf(line, " %c%s", &line1, line2); 
+            strtok(line, "\n");                   
+            if (strcmp(line, "\n") != 0 && line1 != '#') {
+               check_arg(&doc, line);
+            }
+            printf("> ");
+            fgets(line, MAX_STR_SIZE + 1, stdin);
+         }
+      } else if (argc == 2) {
+         if ((input_file = fopen(argv[1], "r")) == NULL) {
+            fprintf(stderr, "%s cannot be opened.\n", argv[1]);
+            exit(EX_OSERR);
+         } else {
+            while (fgets(line, MAX_STR_SIZE + 1, input_file)) {
+               if (strcmp(line, "quit\n") && strcmp(line, "exit\n")) {
+                  arg_number = sscanf(line, " %c%s", &line1, line2);
+                  strtok(line, "\n"); /* remove the newline */
+                  if (arg_number > 0 && line1 != '#') {
+                     check_arg(&doc, line);
+                  }
+               }
+            } 
+         }
+      } else {
+         fprintf(stderr, "Usage: user_interface\n");
+         fprintf(stderr, "Usage: user_interface <filename>\n");
+         exit(EX_USAGE);
+      }
+   } 
+   fclose(input_file);
+   exit(EXIT_SUCCESS);
+}
